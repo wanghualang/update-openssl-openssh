@@ -6,13 +6,12 @@ date=`date "+%Y%m%d"`
 prefix="/usr/local"
 zlib_version="zlib-1.2.11"
 dropbear_version="dropbear-2018.76"
-openssl_version="openssl-1.0.2q"
+openssl_version="openssl-1.0.2r"
 openssh_version="openssh-7.9p1"
 zlib_download="http://zlib.net/$zlib_version.tar.gz"
 dropbear_download="https://matt.ucc.asn.au/dropbear/releases/$dropbear_version.tar.bz2"
 openssl_download="https://www.openssl.org/source/$openssl_version.tar.gz"
 openssh_download="https://openbsd.hk/pub/OpenBSD/OpenSSH/portable/$openssh_version.tar.gz"
-system_version=`cat /etc/redhat-release`
 rhel4_version=`cat /etc/redhat-release | grep "release 4" | wc -l`
 rhel5_version=`cat /etc/redhat-release | grep "release 5" | wc -l`
 rhel6_version=`cat /etc/redhat-release | grep "release 6" | wc -l`
@@ -29,7 +28,7 @@ telnet_running_status=`ps aux | grep -w "xinetd" | grep -v grep | wc -l`
 dropbear_running_status=`ps aux | grep -w "/usr/local/sbin/dropbear" | grep -v grep | wc -l`
 openssh_running_status=`ps aux | grep -w "/usr/sbin/sshd" | grep -v grep | wc -l`
 
-#检查当前用户是否为root
+#检查用户
 if [ $(id -u) != 0 ]; then
 echo -e "当前登陆用户为普通用户，必须使用Root用户运行脚本，五秒后自动退出脚本" "\033[31m Failure\033[0m"
 echo ""
@@ -40,39 +39,32 @@ fi
 #使用说明
 echo -e "\033[33m《一键升级OpenSSL、OpenSSH脚本》使用说明\033[0m"
 echo ""
-echo "A.一键升级脚本仅适用于RHEL/CentOS操作系统，支持4.x、5.x、6.x、7.x各系统版本；"
-echo "B.必须使用Root用户运行脚本，并确保本机已配置好软件仓库以及可以正常访问互联网；"
-echo "C.RHEL4.x - 5.x操作系统会临时安装Telnet，通信端口为23，升级结束后会引导卸载；"
-echo "D.RHEL6.x - 7.x操作系统会临时安装DropBear，通信端口为6666，升级结束后会引导卸载；"
-echo "E.本机旧版本OpenSSH相关文件备份在/tmp/backup_$date文件夹，以便随时还原文件。"
+echo "A.脚本仅适用于RHEL/CentOS操作系统，支持4.x、5.x、6.x、7.x版本；"
+echo "B.必须使用Root用户运行脚本，确保本机已配置好本地或网络软件仓库；"
+echo "C.4.x - 5.x操作系统会临时安装Telnet，通信端口为23，稍后会引导卸载；"
+echo "D.6.x - 7.x操作系统会临时安装DropBear，通信端口为6666，稍后会引导卸载；"
+echo "E.本机旧版本OpenSSH相关文件备份在/tmp/backup_$date文件夹，方便随时还原。"
 echo ""
 
-#操作系统版本
-echo "当前本机操作系统版本："$system_version
-echo ""
-
-#最新软件版本
-echo "当前官网最新软件版本："$openssl_version、$openssh_version
-echo ""
-
-#临时停用SElinux
+#停用SElinux
 setenforce 0 > /dev/null 2>&1
 
-#临时停用防火墙
+#停用防火墙
 if [ $rhel7_version == 1 ];then
-systemctl stop firewalld
+systemctl stop firewalld > /dev/null 2>&1
 else
 service iptables stop > /dev/null 2>&1
 service ip6tables stop > /dev/null 2>&1
 fi
 
-#升级软件（开始）
+#升级软件
 function update() {
-echo -e "\033[33m开始升级OpenSSL、OpenSSH\033[0m"
-echo ""
 
-#安装软件依赖包
-yum -y install gcc pam-devel bzip2 wget make net-tools > /dev/null 2>&1
+#创建备份目录
+mkdir /tmp/backup_$date > /dev/null 2>&1
+
+#安装基础包
+yum -y install gcc pam-devel bzip2 wget make > /dev/null 2>&1
 cd /tmp
 wget --no-check-certificate $zlib_download > /dev/null 2>&1
 tar xzf $zlib_version.tar.gz
@@ -92,7 +84,7 @@ exit
 fi
 echo ""
 
-#解压软件源码包
+#解压源码包
 cd /tmp
 wget --no-check-certificate $dropbear_download > /dev/null 2>&1
 wget --no-check-certificate $openssl_download > /dev/null 2>&1
@@ -135,27 +127,28 @@ mkdir /etc/dropbear
 fi
 
 #备份旧版OpenSSH
-mkdir /tmp/backup_$date
 mkdir -p /tmp/backup_$date/usr/{bin,sbin}
 mkdir -p /tmp/backup_$date/etc/{init.d,pam.d,ssh}
 mkdir -p /tmp/backup_$date/usr/share/man/{man1,man8}
 mkdir -p /tmp/backup_$date/usr/libexec/openssh
-find / -name "ssh*" > /tmp/backup_$date/OpenSSH-Backup.txt
+rpm -ql openssh > /tmp/backup_$date/openssh-rpm-backup-list.txt
+rpm -ql openssh-server > /tmp/backup_$date/openssh-server-rpm-backup-list.txt
+find / -name "ssh*" > /tmp/backup_$date/openssh-backup-list.txt
 
-if [ $openssh_rpm_status != 0 ] && [ $rhel7_version == 1 ];then
-systemctl stop sshd > /dev/null 2>&1
-mv /usr/bin/ssh* /tmp/backup_$date/usr/bin > /dev/null 2>&1
-mv /usr/sbin/sshd /tmp/backup_$date/usr/sbin > /dev/null 2>&1
-mv /etc/init.d/sshd /tmp/backup_$date/etc/init.d > /dev/null 2>&1
-mv /etc/pam.d/sshd /tmp/backup_$date/etc/pam.d > /dev/null 2>&1
-mv /etc/ssh/ssh* /tmp/backup_$date/etc/ssh > /dev/null 2>&1
-mv /etc/ssh/sshd_config /tmp/backup_$date/etc/ssh > /dev/null 2>&1
-mv /usr/share/man/man1/ssh* /tmp/backup_$date/usr/share/man/man1 > /dev/null 2>&1
-mv /usr/share/man/man8/ssh* /tmp/backup_$date/usr/share/man/man8 > /dev/null 2>&1
-mv /usr/libexec/openssh/ssh* /tmp/backup_$date/usr/libexec/openssh > /dev/null 2>&1
-else
+if [ $openssh_rpm_status != 0 ];then
+cp /usr/bin/ssh* /tmp/backup_$date/usr/bin > /dev/null 2>&1
+cp /usr/sbin/sshd /tmp/backup_$date/usr/sbin > /dev/null 2>&1
+cp /etc/init.d/sshd /tmp/backup_$date/etc/init.d > /dev/null 2>&1
+cp /etc/pam.d/sshd /tmp/backup_$date/etc/pam.d > /dev/null 2>&1
+cp /etc/ssh/ssh* /tmp/backup_$date/etc/ssh > /dev/null 2>&1
+cp /etc/ssh/sshd_config /tmp/backup_$date/etc/ssh > /dev/null 2>&1
+cp /usr/share/man/man1/ssh* /tmp/backup_$date/usr/share/man/man1 > /dev/null 2>&1
+cp /usr/share/man/man8/ssh* /tmp/backup_$date/usr/share/man/man8 > /dev/null 2>&1
+cp /usr/libexec/openssh/ssh* /tmp/backup_$date/usr/libexec/openssh > /dev/null 2>&1
 service sshd stop > /dev/null 2>&1
-mv /usr/bin/ssh* /tmp/backup_$date /usr/bin > /dev/null 2>&1
+yum -y remove openssh-server openssh > /dev/null 2>&1
+else
+mv /usr/bin/ssh* /tmp/backup_$date/usr/bin > /dev/null 2>&1
 mv /usr/sbin/sshd /tmp/backup_$date/usr/sbin > /dev/null 2>&1
 mv /etc/init.d/sshd /tmp/backup_$date/etc/init.d > /dev/null 2>&1
 mv /etc/pam.d/sshd /tmp/backup_$date/etc/pam.d > /dev/null 2>&1
@@ -166,7 +159,7 @@ mv /usr/share/man/man8/ssh* /tmp/backup_$date/usr/share/man/man8 > /dev/null 2>&
 mv /usr/libexec/openssh/ssh* /tmp/backup_$date/usr/libexec/openssh > /dev/null 2>&1
 fi
 
-#编译安装OpenSSL
+#安装OpenSSL
 cd /tmp
 tar xzf $openssl_version.tar.gz
 cd $openssl_version
@@ -188,7 +181,7 @@ echo -e "编译安装OpenSSL成功" "\033[32m Success\033[0m"
 fi
 echo ""
 
-#编译安装OpenSSH
+#安装OpenSSH
 cd /tmp
 tar xzf $openssh_version.tar.gz  
 cd $openssh_version
@@ -213,11 +206,7 @@ cp -rf /tmp/$openssh_version/contrib/redhat/sshd.init /etc/init.d/sshd
 cp -rf /tmp/$openssh_version/contrib/redhat/sshd.pam /etc/pam.d/sshd
 chmod +x /etc/init.d/sshd
 chkconfig --add sshd
-sed -i 's/#PermitRootLogin yes/PermitRootLogin yes/' /etc/ssh/sshd_config
-sed -i 's/#UseDNS yes/UseDNS no/' /etc/ssh/sshd_config
-sed -i 's/UsePAM yes/#UsePAM yes/' /etc/ssh/sshd_config
-sed -i 's/GSSAPIAuthentication yes/#GSSAPIAuthentication yes/' /etc/ssh/sshd_config
-sed -i 's/GSSAPICleanupCredentials/#GSSAPICleanupCredentials/' /etc/ssh/sshd_config
+sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
 
 if [ $rhel7_version == 1 ];then
 chmod 600 /etc/ssh/ssh_host_rsa_key
@@ -237,12 +226,12 @@ exit
 fi
 echo ""
 
-#删除软件源码包
+#删除源码包
 rm -rf /tmp/$openssl_version*
 rm -rf /tmp/$openssh_version*
 rm -rf /tmp/$dropbear_version*
 
-#升级完成
+#升级结果
 echo -e "\033[33mOpenSSL、OpenSSH升级成功，软件版本如下：\033[0m"
 echo ""
 $prefix/$openssl_version/bin/openssl version
@@ -304,7 +293,6 @@ fi
 fi
 echo ""
 }
-#升级软件（结束）
 
 #脚本菜单
 echo -e "\033[36m1: 升级软件\033[0m"
