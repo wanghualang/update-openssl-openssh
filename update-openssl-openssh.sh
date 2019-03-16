@@ -37,13 +37,13 @@ exit
 fi
 
 #使用说明
-echo -e "\033[33m《一键升级OpenSSL、OpenSSH脚本》使用说明\033[0m"
+echo -e "\033[33m软件升级 · 脚本说明\033[0m"
 echo ""
-echo "A.脚本仅适用于RHEL/CentOS操作系统，支持4.x、5.x、6.x、7.x版本；"
-echo "B.必须使用Root用户运行脚本，确保本机已配置好本地或网络软件仓库；"
-echo "C.4.x - 5.x操作系统会临时安装Telnet，通信端口为23，稍后会引导卸载；"
-echo "D.6.x - 7.x操作系统会临时安装DropBear，通信端口为6666，稍后会引导卸载；"
-echo "E.本机旧版本OpenSSH相关文件备份在/tmp/backup_$date文件夹，方便随时还原。"
+echo "A.脚本仅适用于RHEL和CentOS操作系统，支持3.x-7.x版本；"
+echo "B.必须使用Root用户运行脚本，确保本机已配置好软件仓库；"
+echo "C.4.x - 5.x操作系统会临时安装Telnet，服务端口为23；"
+echo "D.6.x - 7.x操作系统会临时安装DropBear，服务端口为6666；"
+echo "E.旧版本OpenSSH相关文件备份在/tmp/backup_$date/openssh。"
 echo ""
 
 #停用SElinux
@@ -61,7 +61,7 @@ fi
 function update() {
 
 #创建备份目录
-mkdir /tmp/backup_$date > /dev/null 2>&1
+mkdir -p /tmp/backup_$date/openssh > /dev/null 2>&1
 
 #安装基础包
 yum -y install gcc pam-devel bzip2 wget make > /dev/null 2>&1
@@ -127,36 +127,36 @@ mkdir /etc/dropbear
 fi
 
 #备份旧版OpenSSH
-mkdir -p /tmp/backup_$date/usr/{bin,sbin}
-mkdir -p /tmp/backup_$date/etc/{init.d,pam.d,ssh}
-mkdir -p /tmp/backup_$date/usr/share/man/{man1,man8}
-mkdir -p /tmp/backup_$date/usr/libexec/openssh
-rpm -ql openssh > /tmp/backup_$date/openssh-rpm-backup-list.txt
-rpm -ql openssh-server > /tmp/backup_$date/openssh-server-rpm-backup-list.txt
-find / -name "ssh*" > /tmp/backup_$date/openssh-backup-list.txt
+mkdir -p /tmp/backup_$date/openssh/usr/{bin,sbin}
+mkdir -p /tmp/backup_$date/openssh/etc/{init.d,pam.d,ssh}
+mkdir -p /tmp/backup_$date/openssh/usr/share/man/{man1,man8}
+mkdir -p /tmp/backup_$date/openssh/usr/libexec/openssh
+rpm -ql openssh > /tmp/backup_$date/openssh/openssh-rpm-backup-list.txt
+rpm -ql openssh-server > /tmp/backup_$date/openssh/openssh-server-rpm-backup-list.txt
+find / -name "ssh*" > /tmp/backup_$date/openssh/openssh-backup-list.txt
 
 if [ $openssh_rpm_status != 0 ];then
-cp /usr/bin/ssh* /tmp/backup_$date/usr/bin > /dev/null 2>&1
-cp /usr/sbin/sshd /tmp/backup_$date/usr/sbin > /dev/null 2>&1
-cp /etc/init.d/sshd /tmp/backup_$date/etc/init.d > /dev/null 2>&1
-cp /etc/pam.d/sshd /tmp/backup_$date/etc/pam.d > /dev/null 2>&1
-cp /etc/ssh/ssh* /tmp/backup_$date/etc/ssh > /dev/null 2>&1
-cp /etc/ssh/sshd_config /tmp/backup_$date/etc/ssh > /dev/null 2>&1
-cp /usr/share/man/man1/ssh* /tmp/backup_$date/usr/share/man/man1 > /dev/null 2>&1
-cp /usr/share/man/man8/ssh* /tmp/backup_$date/usr/share/man/man8 > /dev/null 2>&1
-cp /usr/libexec/openssh/ssh* /tmp/backup_$date/usr/libexec/openssh > /dev/null 2>&1
+cp /usr/bin/ssh* /tmp/backup_$date/openssh/usr/bin > /dev/null 2>&1
+cp /usr/sbin/sshd /tmp/backup_$date/openssh/usr/sbin > /dev/null 2>&1
+cp /etc/init.d/sshd /tmp/backup_$date/openssh/etc/init.d > /dev/null 2>&1
+cp /etc/pam.d/sshd /tmp/backup_$date/openssh/etc/pam.d > /dev/null 2>&1
+cp /etc/ssh/ssh* /tmp/backup_$date/openssh/etc/ssh > /dev/null 2>&1
+cp /etc/ssh/sshd_config /tmp/backup_$date/openssh/etc/ssh > /dev/null 2>&1
+cp /usr/share/man/man1/ssh* /tmp/backup_$date/openssh/usr/share/man/man1 > /dev/null 2>&1
+cp /usr/share/man/man8/ssh* /tmp/backup_$date/openssh/usr/share/man/man8 > /dev/null 2>&1
+cp /usr/libexec/openssh/ssh* /tmp/backup_$date/openssh/usr/libexec/openssh > /dev/null 2>&1
 service sshd stop > /dev/null 2>&1
 yum -y remove openssh-server openssh > /dev/null 2>&1
 else
-mv /usr/bin/ssh* /tmp/backup_$date/usr/bin > /dev/null 2>&1
-mv /usr/sbin/sshd /tmp/backup_$date/usr/sbin > /dev/null 2>&1
-mv /etc/init.d/sshd /tmp/backup_$date/etc/init.d > /dev/null 2>&1
-mv /etc/pam.d/sshd /tmp/backup_$date/etc/pam.d > /dev/null 2>&1
-mv /etc/ssh/ssh* /tmp/backup_$date/etc/ssh > /dev/null 2>&1
-mv /etc/ssh/sshd_config /tmp/backup_$date/etc/ssh > /dev/null 2>&1
-mv /usr/share/man/man1/ssh* /tmp/backup_$date/usr/share/man/man1 > /dev/null 2>&1
-mv /usr/share/man/man8/ssh* /tmp/backup_$date/usr/share/man/man8 > /dev/null 2>&1
-mv /usr/libexec/openssh/ssh* /tmp/backup_$date/usr/libexec/openssh > /dev/null 2>&1
+mv /usr/bin/ssh* /tmp/backup_$date/openssh/usr/bin > /dev/null 2>&1
+mv /usr/sbin/sshd /tmp/backup_$date/openssh/usr/sbin > /dev/null 2>&1
+mv /etc/init.d/sshd /tmp/backup_$date/openssh/etc/init.d > /dev/null 2>&1
+mv /etc/pam.d/sshd /tmp/backup_$date/openssh/etc/pam.d > /dev/null 2>&1
+mv /etc/ssh/ssh* /tmp/backup_$date/openssh/etc/ssh > /dev/null 2>&1
+mv /etc/ssh/sshd_config /tmp/backup_$date/openssh/etc/ssh > /dev/null 2>&1
+mv /usr/share/man/man1/ssh* /tmp/backup_$date/openssh/usr/share/man/man1 > /dev/null 2>&1
+mv /usr/share/man/man8/ssh* /tmp/backup_$date/openssh/usr/share/man/man8 > /dev/null 2>&1
+mv /usr/libexec/openssh/ssh* /tmp/backup_$date/openssh/usr/libexec/openssh > /dev/null 2>&1
 fi
 
 #安装OpenSSL
@@ -230,9 +230,10 @@ echo ""
 rm -rf /tmp/$openssl_version*
 rm -rf /tmp/$openssh_version*
 rm -rf /tmp/$dropbear_version*
+rm -rf /tmp/$zlib_version*
 
 #升级结果
-echo -e "\033[33mOpenSSL、OpenSSH升级成功，软件版本如下：\033[0m"
+echo -e "\033[33mOpenSSL、OpenSSH软件版本：\033[0m"
 echo ""
 $prefix/$openssl_version/bin/openssl version
 echo ""
@@ -299,8 +300,8 @@ echo -e "\033[36m1: 升级软件\033[0m"
 echo ""
 echo -e "\033[36m2: 退出脚本\033[0m"
 echo ""
-read -p  "请输入对应数字后按回车开始执行脚本: " install
-if [ "$install" == "1" ];then
+read -p  "请输入对应数字后按回车开始执行脚本: " select
+if [ "$select" == "1" ];then
 clear
 update
 else
