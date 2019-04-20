@@ -8,11 +8,11 @@ prefix="/usr/local"
 dropbear_version="dropbear-2019.78"
 zlib_version="zlib-1.2.11"
 openssl_version="openssl-1.0.2r"
-openssh_version="openssh-7.9p1"
-zlib_download="http://zlib.net/$zlib_version.tar.gz"
-dropbear_download="https://matt.ucc.asn.au/dropbear/releases/$dropbear_version.tar.bz2"
-openssl_download="https://www.openssl.org/source/$openssl_version.tar.gz"
-openssh_download="https://openbsd.hk/pub/OpenBSD/OpenSSH/portable/$openssh_version.tar.gz"
+openssh_version="openssh-8.0p1"
+zlib_download="http://zlib.net/$zlib_version.tar.gz" 
+dropbear_download="https://matt.ucc.asn.au/dropbear/releases/$dropbear_version.tar.bz2" 
+openssl_download="https://www.openssl.org/source/$openssl_version.tar.gz" 
+openssh_download="https://openbsd.hk/pub/OpenBSD/OpenSSH/portable/$openssh_version.tar.gz" 
 unsupported_system=`cat /etc/redhat-release | grep "release 3" | wc -l`
 
 #检查用户
@@ -45,7 +45,7 @@ echo ""
 function install_dropbear() {
 
 #安装依赖包
-yum -y install gcc bzip2 wget make net-tools > /dev/null 2>&1
+yum -y install gcc bzip2 wget make net-tools pam-devel > /dev/null 2>&1
 if [ $? -eq 0 ];then
 echo -e "安装软件依赖包成功" "\033[32m Success\033[0m"
 else
@@ -279,68 +279,7 @@ fi
 echo ""
 
 #配置OpenSSH
->  /etc/ssh/sshd_config
-cat >> /etc/ssh/sshd_config << "EOF"
-#Port 22
-#AddressFamily any
-#ListenAddress 0.0.0.0
-#ListenAddress ::
-HostKey /etc/ssh/ssh_host_rsa_key
-HostKey /etc/ssh/ssh_host_ecdsa_key
-HostKey /etc/ssh/ssh_host_ed25519_key
-#RekeyLimit default none
-SyslogFacility AUTH
-#LogLevel INFO
-#LoginGraceTime 2m
-PermitRootLogin yes
-#StrictModes yes
-#MaxAuthTries 5
-#MaxSessions 10
-#RSAAuthentication yes
-#PubkeyAuthentication yes
-AuthorizedKeysFile	.ssh/authorized_keys
-#AuthorizedPrincipalsFile none
-#AuthorizedKeysCommand none
-#AuthorizedKeysCommandUser nobody
-#HostbasedAuthentication no
-#HostbasedAuthentication
-#IgnoreUserKnownHosts no
-#IgnoreRhosts yes
-#PasswordAuthentication yes
-#PermitEmptyPasswords no
-#ChallengeResponseAuthentication yes
-#KerberosAuthentication no
-#KerberosOrLocalPasswd yes
-#KerberosTicketCleanup yes
-#KerberosGetAFSToken no
-#GSSAPIAuthentication no
-#GSSAPICleanupCredentials yes
-#UsePAM yes
-#AllowAgentForwarding yes
-#AllowTcpForwarding yes
-#GatewayPorts no
-X11Forwarding yes
-#X11DisplayOffset 10
-#X11UseLocalhost yes
-#PermitTTY yes
-PrintMotd no
-PrintLastLog no
-#TCPKeepAlive yes
-#PermitUserEnvironment no
-#Compression delayed
-#ClientAliveInterval 0
-#ClientAliveCountMax 3
-UseDNS no
-#PidFile /var/run/sshd.pid
-#MaxStartups 10:30:100
-#PermitTunnel no
-#ChrootDirectory none
-#VersionAddendum none
-#Banner none
-Subsystem	sftp	/usr/libexec/sftp-server
-#Match User anoncvs
-#ForceCommand cvs server
-EOF
+sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
 
 #启动OpenSSH
 cp -rf /tmp/$openssh_version/contrib/redhat/sshd.init /etc/init.d/sshd
