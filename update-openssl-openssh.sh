@@ -3,7 +3,6 @@ clear
 
 #脚本变量
 date=`date "+%Y%m%d"`
-system_version=`cat /etc/redhat-release`
 prefix="/usr/local"
 dropbear_version="dropbear-2019.78"
 zlib_version="zlib-1.2.11"
@@ -45,7 +44,7 @@ echo ""
 function install_dropbear() {
 
 #安装依赖包
-yum -y install gcc bzip2 wget make net-tools pam-devel > /dev/null 2>&1
+yum -y install gcc bzip2 wget make net-tools > /dev/null 2>&1
 if [ $? -eq 0 ];then
 echo -e "安装软件依赖包成功" "\033[32m Success\033[0m"
 else
@@ -145,7 +144,7 @@ mkdir -p /tmp/backup_$date/openssh/usr/libexec/openssh > /dev/null 2>&1
 mkdir -p /tmp/backup_$date/openssh/usr/share/man/{man1,man8} > /dev/null 2>&1
 
 #安装依赖包
-yum -y install gcc pam-devel bzip2 wget make net-tools > /dev/null 2>&1
+yum -y install gcc wget make pam-devel > /dev/null 2>&1
 if [ $? -eq 0 ];then
 echo -e "安装软件依赖包成功" "\033[32m Success\033[0m"
 else
