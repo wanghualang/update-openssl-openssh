@@ -9,8 +9,8 @@ DROPBEAR_VERSION="dropbear-2019.78"
 ZLIB_VERSION="zlib-1.2.11"
 OPENSSL_VERSION="openssl-1.0.2t"
 OPENSSH_VERSION="openssh-8.1p1"
+dropbear_download="https://matt.ucc.asn.au/dropbear/releases/$dropbear_version.tar.bz2"
 zlib_download="http://zlib.net/$zlib_version.tar.gz" 
-dropbear_download="https://matt.ucc.asn.au/dropbear/releases/$dropbear_version.tar.bz2" 
 openssl_download="https://www.openssl.org/source/$openssl_version.tar.gz" 
 openssh_download="https://openbsd.hk/pub/OpenBSD/OpenSSH/portable/$openssh_version.tar.gz" 
 UNSUPPORTED_SYSTEM=`cat /etc/redhat-release | grep "release 3" | wc -l`
@@ -214,9 +214,6 @@ echo ""
 #备份旧版OpenSSH
 rpm -qa | grep -w "openssh-server" > /dev/null 2>&1
 if [ $? -eq 0 ];then
-rpm -ql openssh > /tmp/backup_$DATE/openssh/openssh-rpm-backup-list.txt
-rpm -ql openssh-clients > /tmp/backup_$DATE/openssh/openssh-clients-rpm-backup-list.txt
-rpm -ql openssh-server > /tmp/backup_$DATE/openssh/openssh-server-rpm-backup-list.txt
 cp /usr/bin/ssh* /tmp/backup_$DATE/openssh/usr/bin > /dev/null 2>&1
 cp /usr/sbin/sshd /tmp/backup_$DATE/openssh/usr/sbin > /dev/null 2>&1
 cp /etc/init.d/sshd /tmp/backup_$DATE/openssh/etc/init.d > /dev/null 2>&1
@@ -226,11 +223,8 @@ cp /etc/ssh/sshd_config /tmp/backup_$DATE/openssh/etc/ssh > /dev/null 2>&1
 cp /usr/share/man/man1/ssh* /tmp/backup_$DATE/openssh/usr/share/man/man1 > /dev/null 2>&1
 cp /usr/share/man/man8/ssh* /tmp/backup_$DATE/openssh/usr/share/man/man8 > /dev/null 2>&1
 cp /usr/libexec/openssh/ssh* /tmp/backup_$DATE/openssh/usr/libexec/openssh > /dev/null 2>&1
-service sshd stop > /dev/null 2>&1
-yum -y remove openssh-server openssh-clients openssh > /dev/null 2>&1
+rpm -e --nodeps openssh-clients openssh-server openssh > /dev/null 2>&1
 else
-find /etc -name "ssh*" > /tmp/backup_$DATE/openssh/openssh-backup-list.txt
-find /usr -name "ssh*" >> /tmp/backup_$DATE/openssh/openssh-backup-list.txt
 mv /usr/bin/ssh* /tmp/backup_$DATE/openssh/usr/bin > /dev/null 2>&1
 mv /usr/sbin/sshd /tmp/backup_$DATE/openssh/usr/sbin > /dev/null 2>&1
 mv /etc/init.d/sshd /tmp/backup_$DATE/openssh/etc/init.d > /dev/null 2>&1
