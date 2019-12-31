@@ -7,12 +7,12 @@ DATE=`date "+%Y%m%d"`
 PREFIX="/usr/local"
 DROPBEAR_VERSION="dropbear-2019.78"
 ZLIB_VERSION="zlib-1.2.11"
-OPENSSL_VERSION="openssl-1.0.2t"
+OPENSSL_VERSION="openssl-1.0.2u"
 OPENSSH_VERSION="openssh-8.1p1"
-dropbear_download="https://matt.ucc.asn.au/dropbear/releases/$dropbear_version.tar.bz2"
-zlib_download="http://zlib.net/$zlib_version.tar.gz" 
-openssl_download="https://www.openssl.org/source/$openssl_version.tar.gz" 
-openssh_download="https://openbsd.hk/pub/OpenBSD/OpenSSH/portable/$openssh_version.tar.gz" 
+DROPBEAR_DOWNLOAD="https://matt.ucc.asn.au/dropbear/releases/$dropbear_version.tar.bz2"
+ZLIB_DOWNLOAD="http://zlib.net/$zlib_version.tar.gz" 
+OPENSSL_DOWNLOAD="https://www.openssl.org/source/$openssl_version.tar.gz" 
+OPENSSH_DOWNLOAD="https://openbsd.hk/pub/OpenBSD/OpenSSH/portable/$openssh_version.tar.gz"
 UNSUPPORTED_SYSTEM=`cat /etc/redhat-release | grep "release 3" | wc -l`
 
 #检查用户
