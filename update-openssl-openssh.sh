@@ -8,9 +8,9 @@ PREFIX="/usr/local"
 DROPBEAR_VERSION="dropbear-2019.78"
 OPENSSL_VERSION="openssl-1.1.1e"
 OPENSSH_VERSION="openssh-8.2p1"
-DROPBEAR_DOWNLOAD="https://matt.ucc.asn.au/dropbear/releases/$dropbear_version.tar.bz2"
-OPENSSL_DOWNLOAD="https://www.openssl.org/source/$openssl_version.tar.gz" 
-OPENSSH_DOWNLOAD="https://openbsd.hk/pub/OpenBSD/OpenSSH/portable/$openssh_version.tar.gz"
+DROPBEAR_DOWNLOAD="https://matt.ucc.asn.au/dropbear/releases/${DROPBEAR_VERSION}_version.tar.bz2"
+OPENSSL_DOWNLOAD="https://www.openssl.org/source/${OPENSSL_VERSION}.tar.gz" 
+OPENSSH_DOWNLOAD="https://openbsd.hk/pub/OpenBSD/OpenSSH/portable/${OPENSSH_VERSION}.tar.gz"
 UNSUPPORTED_SYSTEM=`cat /etc/redhat-release | grep "release 3" | wc -l`
 
 #检查用户
