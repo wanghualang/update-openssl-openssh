@@ -5,51 +5,53 @@ export LANG="en_US.UTF-8"
 #脚本变量
 DATE=`date "+%Y%m%d"`
 PREFIX="/usr/local"
-DROPBEAR_VERSION="dropbear-2019.78"
-OPENSSL_VERSION="openssl-1.1.1e"
-OPENSSH_VERSION="openssh-8.2p1"
-DROPBEAR_DOWNLOAD="https://matt.ucc.asn.au/dropbear/releases/$dropbear_version.tar.bz2"
-OPENSSL_DOWNLOAD="https://www.openssl.org/source/$openssl_version.tar.gz" 
-OPENSSH_DOWNLOAD="https://openbsd.hk/pub/OpenBSD/OpenSSH/portable/$openssh_version.tar.gz"
-UNSUPPORTED_SYSTEM=`cat /etc/redhat-release | grep "release 3" | wc -l`
+PERL_VERSION="5.32.0"
+OPENSSL_VERSION="openssl-1.1.1g"
+OPENSSH_VERSION="openssh-8.3p1"
+DROPBEAR_VERSION="dropbear-2020.80"
+PERL_DOWNLOAD="https://www.cpan.org/src/5.0/perl-$PERL_VERSION.tar.gz"
+OPENSSL_DOWNLOAD="https://www.openssl.org/source/$OPENSSL_VERSION.tar.gz"
+OPENSSH_DOWNLOAD="https://openbsd.hk/pub/OpenBSD/OpenSSH/portable/$OPENSSH_VERSION.tar.gz"
+DROPBEAR_DOWNLOAD="https://matt.ucc.asn.au/dropbear/releases/$DROPBEAR_VERSION.tar.bz2"
+DROPBEAR_PORT="6666"
+OPENSSH_RPM_INSTALLED=$(rpm -qa | grep ^openssh | wc -l)
+SYSTEM_VERSION=$(cat /etc/redhat-release | sed -r 's/.* ([0-9]+)\..*/\1/')
 
 #检查用户
 if [ $(id -u) != 0 ]; then
-echo -e "当前登陆用户为普通用户，必须使用Root用户运行脚本，五秒后自动退出脚本" "\033[31m Failure\033[0m"
+echo -e "必须使用Root用户运行脚本" "\033[31m Failure\033[0m"
 echo ""
-sleep 5
 exit
 fi
 
 #检查系统
-if [ "$UNSUPPORTED_SYSTEM" == "1" ];then
+if [ ! -e /etc/redhat-release ] || [ "$SYSTEM_VERSION" == "3" ] || [ "$SYSTEM_VERSION" == "4" ];then
 clear
-echo -e "脚本仅支持操作系统4.x-7.x版本，五秒后自动退出脚本" "\033[31m Failure\033[0m"
+echo -e "脚本仅适用于RHEL和CentOS操作系统5.x-8.x版本" "\033[31m Failure\033[0m"
 echo ""
-sleep 5
 exit
 fi
 
 #使用说明
-echo -e "\033[33m快速编译安装OpenSSH\033[0m"
+echo -e "\033[33m一键升级OpenSSH\033[0m"
 echo ""
-echo "脚本仅适用于RHEL和CentOS操作系统，支持4.x-7.x版本"
-echo "必须使用Root用户运行脚本，确保本机已配置好软件仓库"
-echo "企业生产环境中建议先临时安装Dropbear，再安装OpenSSH"
-echo "旧版本OpenSSH相关文件备份在/tmp/openssh_bak_$DATE"
+echo "脚本仅适用于RHEL和CentOS操作系统5.X-8.X版本"
+echo "建议先临时安装DropbearSSH，再开始升级OpenSSH"
+echo "旧版本OpenSSH备份在/tmp/openssh_bak_$DATE"
 echo ""
 
 #安装Dropbear
 function INSTALL_DROPBEAR() {
+echo -e "\033[33m正在安装DropBearSSH\033[0m"
+echo ""
 
 #安装依赖包
-yum -y install gcc bzip2 wget make net-tools > /dev/null 2>&1
+yum -y install gcc bzip2 wget make > /dev/null 2>&1
 if [ $? -eq 0 ];then
-echo -e "安装软件依赖包成功" "\033[32m Success\033[0m"
+echo -e "安装依赖包成功" "\033[32m Success\033[0m"
 else
-echo -e "安装软件依赖包失败，五秒后自动退出脚本" "\033[31m Failure\033[0m"
+echo -e "安装依赖包失败" "\033[31m Failure\033[0m"
 echo ""
-sleep 5
 exit
 fi
 echo ""
@@ -59,11 +61,10 @@ cd /tmp
 wget --no-check-certificate $DROPBEAR_DOWNLOAD > /dev/null 2>&1
 tar xjf $DROPBEAR_VERSION.tar.bz2 > /dev/null 2>&1
 if [ -d /tmp/$DROPBEAR_VERSION ];then
-echo -e "解压软件源码包成功" "\033[32m Success\033[0m"
+echo -e "解压源码包成功" "\033[32m Success\033[0m"
 else
-echo -e "解压软件源码包失败，五秒后自动退出脚本" "\033[31m Failure\033[0m"
+echo -e "解压源码包失败" "\033[31m Failure\033[0m"
 echo ""
-sleep 5
 exit
 fi
 echo ""
@@ -75,65 +76,60 @@ if [ $? -eq 0 ];then
 make > /dev/null 2>&1
 make install > /dev/null 2>&1
 else
-echo -e "编译安装Dropbear失败，五秒后自动退出脚本" "\033[31m Failure\033[0m"
+echo -e "编译安装失败" "\033[31m Failure\033[0m"
 echo ""
-sleep 5
 exit
 fi
 
 #启动Dropbear
 mkdir /etc/dropbear > /dev/null 2>&1
-/usr/local/bin/dropbearkey -t dss -f /etc/dropbear/dropbear_dss_host_key > /dev/null 2>&1
-/usr/local/bin/dropbearkey -t rsa -s 4096 -f /etc/dropbear/dropbear_rsa_host_key > /dev/null 2>&1
-/usr/local/sbin/dropbear -p 6666 > /dev/null 2>&1
-netstat -lantp | grep -w "0.0.0.0:6666" > /dev/null 2>&1
+/usr/local/bin/dropbearkey -t rsa -s 2048 -f /etc/dropbear/dropbear_rsa_host_key > /dev/null 2>&1
+/usr/local/sbin/dropbear -p $DROPBEAR_PORT > /dev/null 2>&1
+ps aux | grep dropbear | grep -v grep > /dev/null 2>&1
 if [ $? -eq 0 ];then
 rm -rf /tmp/$DROPBEAR_VERSION*
-iptables -I INPUT -p tcp --dport 6666 -m comment --comment "DropbearSSH" -j ACCEPT
-echo -e "启动Dropbear服务成功" "\033[32m Success\033[0m"
-echo ""
-netstat -lantp | grep -w "0.0.0.0:6666" | awk '{print $7,$4}' | column -t
+echo -e "启动服务端成功" "\033[32m Success\033[0m"
 else
-echo -e "启动Dropbear服务失败，五秒后自动退出脚本" "\033[31m Failure\033[0m"
-sleep 5
+echo -e "启动服务端失败" "\033[31m Failure\033[0m"
 exit
 fi
 echo ""
 }
 
-#卸载dropbear
+#卸载Dropbear
 function UNINSTALL_DROPBEAR() {
-
-ps aux | grep "/usr/local/sbin/dropbear" | grep -v grep | awk '{print $2}' | xargs kill -9 > /dev/null 2>&1
-find /usr/local/ -name dropbear* | xargs rm -rf > /dev/null 2>&1
-rm -rf /etc/dropbear > /dev/null 2>&1
-rm -f /var/run/dropbear.pid > /dev/null 2>&1
-ps aux | grep "/usr/local/sbin/dropbear" | grep -v grep > /dev/null 2>&1
+echo -e "\033[33m正在卸载DropBearSSH\033[0m"
+echo ""
+ps aux | grep dropbear | grep -v grep | awk '{print $2}' | xargs kill -9 > /dev/null 2>&1
+rm -rf /etc/dropbear
+rm -f /var/run/dropbear.pid
+rm -f /usr/local/sbin/dropbear
+rm -f /usr/local/bin/dropbearkey
+rm -f /usr/local/bin/dropbearconvert
+rm -f /usr/local/share/man/man8/dropbear*
+rm -f /usr/local/share/man/man1/dropbear*
+ps aux | grep dropbear | grep -v grep > /dev/null 2>&1
 if [ $? -ne 0 ];then
-echo -e "卸载DropBear成功" "\033[32m Success\033[0m"
+echo -e "卸载服务端成功" "\033[32m Success\033[0m"
 else
-echo -e "卸载DropBear失败，五秒后自动退出脚本" "\033[31m Failure\033[0m"
-sleep 5
+echo -e "卸载服务端失败" "\033[31m Failure\033[0m"
 exit
 fi
 echo ""
 }
 
 #升级OpenSSH
-function OPENSSH() {
-
-#创建备份目录
-mkdir -p /tmp/openssh_bak_$DATE/etc/{init.d,pam.d} > /dev/null 2>&1
-mkdir -p /tmp/openssh_bak_$DATE/usr/{bin,sbin,libexec} > /dev/null 2>&1
+function INSTALL_OPENSSH() {
+echo -e "\033[33m正在升级OpenSSH\033[0m"
+echo ""
 
 #安装依赖包
-yum -y install vim gcc wget make pam-devel zlib-devel> /dev/null 2>&1
+yum -y install gcc wget make perl-devel pam-devel zlib-devel > /dev/null 2>&1
 if [ $? -eq 0 ];then
-echo -e "安装软件依赖包成功" "\033[32m Success\033[0m"
+echo -e "安装依赖包成功" "\033[32m Success\033[0m"
 else
-echo -e "安装软件依赖包失败，五秒后自动退出脚本" "\033[31m Failure\033[0m"
+echo -e "安装依赖包失败" "\033[31m Failure\033[0m"
 echo ""
-sleep 5
 exit
 fi
 echo ""
@@ -142,34 +138,73 @@ echo ""
 cd /tmp
 wget --no-check-certificate $OPENSSL_DOWNLOAD > /dev/null 2>&1
 wget --no-check-certificate $OPENSSH_DOWNLOAD > /dev/null 2>&1
-tar xzf $OPENSSL_VERSION.tar.gz
-tar xzf $OPENSSH_VERSION.tar.gz
+tar xzf $OPENSSL_VERSION.tar.gz > /dev/null 2>&1
+tar xzf $OPENSSH_VERSION.tar.gz > /dev/null 2>&1
 if [ -d /tmp/$OPENSSL_VERSION ] && [ -d /tmp/$OPENSSH_VERSION ];then
-echo -e "解压软件源码包成功" "\033[32m Success\033[0m"
+echo -e "解压源码包成功" "\033[32m Success\033[0m"
 else
-echo -e "解压软件源码包失败，五秒后自动退出脚本" "\033[31m Failure\033[0m"
+echo -e "解压源码包失败" "\033[31m Failure\033[0m"
 echo ""
-sleep 5
 exit
 fi
 echo ""
 
-#备份旧版OpenSSH
-mv /etc/ssh /tmp/openssh_bak_$DATE/etc > /dev/null 2>&1
-mv /etc/init.d/sshd /tmp/openssh_bak_$DATE/etc/init.d > /dev/null 2>&1
-mv /etc/pam.d/sshd /tmp/openssh_bak_$DATE/etc/pam.d > /dev/null 2>&1
-mv /usr/bin/scp /tmp/openssh_bak_$DATE/usr/bin > /dev/null 2>&1
-mv /usr/bin/sftp /tmp/openssh_bak_$DATE/usr/bin > /dev/null 2>&1
-mv /usr/bin/ssh /tmp/openssh_bak_$DATE/usr/bin > /dev/null 2>&1
-mv /usr/bin/ssh-add /tmp/openssh_bak_$DATE/usr/bin > /dev/null 2>&1
-mv /usr/bin/ssh-agent /tmp/openssh_bak_$DATE/usr/bin > /dev/null 2>&1
-mv /usr/bin/ssh-keygen /tmp/openssh_bak_$DATE/usr/bin > /dev/null 2>&1
-mv /usr/bin/ssh-keyscan /tmp/openssh_bak_$DATE/usr/bin > /dev/null 2>&1
-mv /usr/sbin/sshd /tmp/openssh_bak_$DATE/usr/sbin > /dev/null 2>&1
-mv /usr/libexec/sftp-server /tmp/openssh_bak_$DATE/usr/libexec > /dev/null 2>&1
-mv /usr/libexec/ssh-keysign /tmp/openssh_bak_$DATE/usr/libexec > /dev/null 2>&1
-mv /usr/libexec/ssh-pkcs11-helper /tmp/openssh_bak_$DATE/usr/libexec > /dev/null 2>&1
-mv /usr/libexec/ssh-sk-helper /tmp/openssh_bak_$DATE/usr/libexec > /dev/null 2>&1
+#创建备份目录
+mkdir -p /tmp/openssh_bak_$DATE/etc/{init.d,pam.d,ssh}
+mkdir -p /tmp/openssh_bak_$DATE/usr/{bin,sbin,libexec}
+mkdir /tmp/openssh_bak_$DATE/usr/libexec/openssh
+
+#备份旧程序
+cp -af /etc/ssh/* /tmp/openssh_bak_$DATE/etc/ssh/ > /dev/null 2>&1
+cp -af /etc/init.d/sshd /tmp/openssh_bak_$DATE/etc/init.d/ > /dev/null 2>&1
+cp -af /etc/pam.d/sshd /tmp/openssh_bak_$DATE/etc/pam.d/ > /dev/null 2>&1
+cp -af /usr/bin/scp /tmp/openssh_bak_$DATE/usr/bin/ > /dev/null 2>&1
+cp -af /usr/bin/sftp /tmp/openssh_bak_$DATE/usr/bin/ > /dev/null 2>&1
+cp -af /usr/bin/ssh* /tmp/openssh_bak_$DATE/usr/bin/ > /dev/null 2>&1
+cp -af /usr/bin/slogin /tmp/openssh_bak_$DATE/usr/bin/ > /dev/null 2>&1
+cp -af /usr/sbin/sshd* /tmp/openssh_bak_$DATE/usr/sbin/ > /dev/null 2>&1
+cp -af /usr/libexec/ssh* /tmp/openssh_bak_$DATE/usr/libexec/ > /dev/null 2>&1
+cp -af /usr/libexec/sftp* /tmp/openssh_bak_$DATE/usr/libexec/ > /dev/null 2>&1
+cp -af /usr/libexec/openssh/* /tmp/openssh_bak_$DATE/usr/libexec/openssh/ > /dev/null 2>&1
+
+#卸载旧程序
+if [ "$OPENSSH_RPM_INSTALLED" == "0" ];then
+rm -f /etc/ssh/*
+rm -f /etc/init.d/sshd
+rm -f /etc/pam.d/sshd
+rm -f /usr/bin/scp
+rm -f /usr/bin/sftp
+rm -f /usr/bin/ssh
+rm -f /usr/bin/slogin
+rm -f /usr/bin/ssh-add
+rm -f /usr/bin/ssh-agent
+rm -f /usr/bin/ssh-keygen
+rm -f /usr/bin/ssh-copy-id
+rm -f /usr/bin/ssh-keyscan
+rm -f /usr/sbin/sshd
+rm -f /usr/sbin/sshd-keygen
+rm -f /usr/libexec/openssh/*
+rm -f /usr/libexec/sftp-server
+rm -f /usr/libexec/ssh-keysign
+rm -f /usr/libexec/ssh-sk-helper
+rm -f /usr/libexec/ssh-pkcs11-helper
+else
+rpm -e --nodeps `rpm -qa | grep ^openssh` > /dev/null 2>&1
+rm -f /etc/ssh/*
+fi
+
+#升级Perl
+if [ "$SYSTEM_VERSION" == "5" ];then
+cd /tmp
+wget --no-check-certificate $PERL_DOWNLOAD > /dev/null 2>&1
+tar xzf perl-$PERL_VERSION.tar.gz > /dev/null 2>&1
+cd perl-$PERL_VERSION
+./Configure -des -Dprefix=/usr/local/perl-$PERL_VERSION > /dev/null 2>&1
+make > /dev/null 2>&1
+make install > /dev/null 2>&1
+mv /usr/bin/perl /tmp/openssh_bak_$DATE/usr/bin/ > /dev/null 2>&1
+ln -sf /usr/local/perl-$PERL_VERSION/bin/perl /usr/bin/perl > /dev/null 2>&1
+fi
 
 #安装OpenSSL
 cd /tmp/$OPENSSL_VERSION
@@ -180,9 +215,8 @@ make install > /dev/null 2>&1
 echo "$PREFIX/$OPENSSL_VERSION/lib" >> /etc/ld.so.conf
 ldconfig > /dev/null 2>&1
 else
-echo -e "编译安装OpenSSL失败，五秒后自动退出脚本" "\033[31m Failure\033[0m"
+echo -e "编译安装OpenSSL失败" "\033[31m Failure\033[0m"
 echo ""
-sleep 5
 exit
 fi
 
@@ -192,28 +226,26 @@ cd /tmp/$OPENSSH_VERSION
 if [ $? -eq 0 ];then
 make > /dev/null 2>&1
 make install > /dev/null 2>&1
-sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
-cp -f /tmp/$OPENSSH_VERSION/contrib/redhat/sshd.init /etc/init.d/sshd
+sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config > /dev/null 2>&1
+cp -af /tmp/$OPENSSH_VERSION/contrib/redhat/sshd.init /etc/init.d/sshd
 chmod +x /etc/init.d/sshd
 chmod 600 /etc/ssh/*
 chkconfig --add sshd
 chkconfig sshd on
 else
-echo -e "编译安装OpenSSH失败，五秒后自动退出脚本" "\033[31m Failure\033[0m"
+echo -e "编译安装OpenSSH失败" "\033[31m Failure\033[0m"
 echo ""
-sleep 5
 exit
 fi
 
 #启动OpenSSH
-service sshd restart > /dev/null 2>&1
+service sshd start > /dev/null 2>&1
 if [ $? -eq 0 ];then
-echo -e "启动OpenSSH服务成功" "\033[32m Success\033[0m"
+echo -e "启动服务端成功" "\033[32m Success\033[0m"
 echo ""
 ssh -V
 else
-echo -e "启动OpenSSH服务失败，五秒后自动退出脚本" "\033[31m Failure\033[0m"
-sleep 5
+echo -e "启动服务端失败" "\033[31m Failure\033[0m"
 exit
 fi
 echo ""
@@ -221,14 +253,15 @@ echo ""
 #删除源码包
 rm -rf /tmp/$OPENSSL_VERSION*
 rm -rf /tmp/$OPENSSH_VERSION*
+rm -rf /tmp/perl-$PERL_VERSION*
 }
 
 #脚本菜单
-echo -e "\033[36m1: 安装DropBear\033[0m"
+echo -e "\033[36m1: 安装DropBearSSH\033[0m"
 echo ""
-echo -e "\033[36m2: 卸载DropBear\033[0m"
+echo -e "\033[36m2: 卸载DropBearSSH\033[0m"
 echo ""
-echo -e "\033[36m3: 安装OpenSSH\033[0m"
+echo -e "\033[36m3: 升级OpenSSH\033[0m"
 echo ""
 echo -e "\033[36m4: 退出脚本\033[0m"
 echo ""
@@ -243,7 +276,7 @@ UNINSTALL_DROPBEAR
 fi
 if [ "$SELECT" == "3" ];then
 clear
-OPENSSH
+INSTALL_OPENSSH
 fi
 if [ "$SELECT" == "4" ];then
 echo ""
